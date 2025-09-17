@@ -609,6 +609,8 @@ class HomeController extends Controller
                 'users.id',
                 'users.name',
                 'users.photo',
+                'users.phone',
+                'users.address',
                 'userlocations.latitude',
                 'userlocations.longitude',
                 \DB::raw("(
@@ -1343,11 +1345,11 @@ class HomeController extends Controller
 
     public function updateUserPhoto(Request $request)
     {
-          $user = auth()->user();
-        $request->validate([
-            'photo' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+        $user = auth()->user();
+        
+        $data=$request->validate([
+            'photo' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:20480',
         ]);
-
         // Handle photo upload
         if ($request->hasFile('photo')) {
             // Delete old photo if exists
