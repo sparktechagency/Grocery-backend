@@ -125,7 +125,14 @@ class PaymentController extends Controller
                     'productId' => $item->product->productId ?? null,
                     'images' => $item->product->images ?? null
                 ]);
+                
+                Cart::where([
+                    'user_id'    => $user->id,
+                    'product_id' => $item->product_id,
+                ])->delete();
             }
+
+
 
             
 

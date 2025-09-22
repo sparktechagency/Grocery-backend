@@ -2,20 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
-use Tymon\JWTAuth\Facades\JWTAuth;
-use Illuminate\Http\Request;
-use App\Models\Banner;
-use App\Models\User;
 use App\Models\Card;
+use App\Models\User;
 use App\Models\Order;
+use App\Models\Banner;
 use App\Models\Payment;
+use App\Models\Product;
+use App\Models\Myshopper;
+use App\Models\UserLocation;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Tymon\JWTAuth\Facades\JWTAuth;
+use Illuminate\Support\Facades\Log;
+use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\Rule;
-use App\Models\UserLocation;
-use App\Models\Product;
 
 class HomeController extends Controller
 {
@@ -336,6 +337,7 @@ class HomeController extends Controller
 
     public function searchProductByStore(Request $request, $store)
     {
+        
         $validatedData = $request->validate([
             'per_page' => 'sometimes|integer|min:1|max:100',
             'page' => 'sometimes|integer|min:1',
@@ -586,50 +588,75 @@ class HomeController extends Controller
 
     public function personalShopper(Request $request)
     {
-        $user = auth()->user();
+    $userid = Auth::id();
+    // Get IDs of shoppers assigned to this user
+    $shopperIds = Myshopper::where('user_id', $userid)
+                    ->pluck('shopper_id');
+    // Get shopper details including location
+    $shoppers = User::with('userlocation')
+                    ->whereIn('id', $shopperIds)
+                    ->where('role', 'shopper')
+                    ->get();
+    // Format the response
+    $shoppersData = $shoppers->map(function($shopper) {
+        $location = $shopper->userlocation;
 
-        $userLocation = $user->userlocations;
-        if (!$userLocation || $userLocation->latitude === null || $userLocation->longitude === null) {
-            return response()->json([
-                'status' => false,
-                'message' => 'User location not set',
-                'shopper' => null,
-            ], 400);
-        }
+        return [
+            'id' => $shopper->id,
+            'name' => $shopper->name,
+            'email' => $shopper->email,
+            'phone' => $shopper->phone,
+            'photo' => $shopper->photo,
+            'address' => $shopper->address,
+            'status' => $shopper->status,
+            'location' => $location ? [
+                'latitude' => $location->latitude,
+                'longitude' => $location->longitude,
+            ] : null,
+        ];
+    });
 
-        $latitude = (float) $userLocation->latitude;
-        $longitude = (float) $userLocation->longitude;
-        $radiusKm = 10; // 10 km radius
+    return response()->json([
+        'status' => true,
+        'message' => 'Personal shoppers retrieved successfully',
+        'shoppers' => $shoppersData,
+    ]);
+        // $userid = Auth::id();
 
-        $shoppers = User::query()
-            ->where('role', 'shopper')
-            ->join('userlocations', 'users.id', '=', 'userlocations.user_id')
-            ->whereNull('userlocations.deleted_at')
-            ->select(
-                'users.id',
-                'users.name',
-                'users.photo',
-                'users.phone',
-                'users.address',
-                'userlocations.latitude',
-                'userlocations.longitude',
-                \DB::raw("(
-                    6371 * acos(
-                        cos(radians($latitude)) * cos(radians(userlocations.latitude)) *
-                        cos(radians(userlocations.longitude) - radians($longitude)) +
-                        sin(radians($latitude)) * sin(radians(userlocations.latitude))
-                    )
-                ) as distance_km")
-            )
-            ->having('distance_km', '<=', $radiusKm)
-            ->orderBy('distance_km', 'asc')
-            ->get();
+        // $myshoppers=Myshopper::where('user_id',$userid)->get();
+        // return  $radiusKm = 10; // 10 km radius
+
+        // $shoppers = User::query()
+        //     ->where('role', 'shopper')
+        //     ->join('userlocations', 'users.id', '=', 'userlocations.user_id')
+        //     ->whereNull('userlocations.deleted_at')
+        //     ->select(
+        //         'users.id',
+        //         'users.name',
+        //         'users.photo',
+        //         'users.phone',
+        //         'users.address',
+        //         'users.status',
+        //         'userlocations.latitude',
+        //         'userlocations.longitude',
+        //         \DB::raw("(
+        //             6371 * acos(
+        //                 cos(radians($latitude)) * cos(radians(userlocations.latitude)) *
+        //                 cos(radians(userlocations.longitude) - radians($longitude)) +
+        //                 sin(radians($latitude)) * sin(radians(userlocations.latitude))
+        //             )
+        //         ) as distance_km")
+        //     )
+        //     ->having('distance_km', '<=', $radiusKm)
+        //     ->orderBy('distance_km', 'asc')
+        //     ->get();
         
-        return response()->json([
-            'status' => true,
-            'message' => 'Personal shopper retrieved successfully',
-            'shopper' => $shoppers,
-        ]);
+        
+        //     return response()->json([
+        //     'status' => true,
+        //     'message' => 'Personal shopper retrieved successfully',
+        //     'shopper' => $shoppers,
+        // ]);
     }
 
     public function makeShopper(Request $request)
@@ -646,52 +673,76 @@ class HomeController extends Controller
                 'message' => 'This user is not a shopper',
             ], 400);
         }
-         
-        $authUser = User::with('personalShopper')->find(auth()->id());
 
-        if($authUser->shopper_id == $validated['user_id']) {
+        $userid = Auth::id();
+        $checkshoper=Myshopper::where([
+            'user_id'=>$userid,
+            'shopper_id'=>$validated['user_id'],
+        ])->exists();
+
+        if($checkshoper) {
             return response()->json([
                 'status' => false,
                 'message' => 'This user is already a shopper',
             ], 400);
+        }else{
+
+        $addshoper=Myshopper::create([
+            'user_id'=> $userid,
+            'shopper_id'=> $validated['user_id'],
+        ]);
+        return response()->json([
+            'status' => true,
+            'message' => 'User assigned as a shopper successfully',
+            'data' => [
+                'user_id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ]
+        ]);
+
         }
-        else{
-            $authUser->shopper_id = $validated['user_id'];
-            $authUser->save();
-            return response()->json([
-                'status' => true,
-                'message' => 'User assigned as a shopper successfully',
-                'data' => [
-                    'user_id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                ]
-            ]);
-        }
+
         
     }
 
 
     public function removeShopper(Request $request)
-    {
-        $authUser = auth()->user();
-        
-        // $shopper = User::where('shopper_id', $authUser->shopper_id)->first();
+    { 
+        $validated = $request->validate([
+            'user_id' => 'required|exists:users,id',
+        ]);
 
-        if($authUser->shopper_id == null) {
+        $user = User::find($validated['user_id']);
+
+        if ($user->role != 'shopper') {
             return response()->json([
                 'status' => false,
-                'message' => 'This user doesnt have a shopper',
+                'message' => 'This user is not a shopper',
             ], 400);
         }
-        else{
-            $authUser->shopper_id = null;
-            $authUser->save();
+
+        $userid = Auth::id();
+
+        $deleted = Myshopper::where([
+            'user_id' => $userid,
+            'shopper_id' => $validated['user_id'],
+        ])->delete();
+
+        if ($deleted) {
             return response()->json([
                 'status' => true,
                 'message' => 'Shopper removed successfully',
             ]);
+        }else{
+            return response()->json([
+                'status' => false,
+                'message' => 'This user is not your personal shopper.',
+            ], 400);
         }
+
+        
+
     }
 
     public function getAllOrders(Request $request)

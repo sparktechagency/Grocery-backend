@@ -114,4 +114,9 @@ class User extends Authenticatable implements JWTSubject
     {
         return $this->hasOne(Userlocation::class);
     }
+
+    public function userlocation()
+    {
+    return $this->hasOne(Userlocation::class, 'user_id');
+    }
 }
