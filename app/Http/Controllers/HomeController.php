@@ -907,10 +907,35 @@ class HomeController extends Controller
     public function totalUser(Request $request)
     {
         $totalUser = User::where('role', 'user')->count();
+        $alluser = User::where('role', 'user')->paginate(10);
         return response()->json([
             'status' => true,
             'message' => 'Total user retrieved successfully',
-            'data' => $totalUser
+            'data' => $totalUser,
+            'userdata'=>$alluser
+        ]);
+    }
+    public function totalUseS(Request $request)
+    {
+        $perPage   = $request->query('totalUser', 10); // default 10 if not provided
+        $page      = $request->query('page', 1);       // default 1 if not provided
+        $searchKey = $request->query('search');        // nullable
+
+        $query = User::where('role', 'user');
+
+        if (!empty($searchKey)) {
+            $query->where(function ($q) use ($searchKey) {
+                $q->where('name', 'LIKE', "%{$searchKey}%")
+                ->orWhere('email', 'LIKE', "%{$searchKey}%");
+            });
+        }
+
+        $alluser = $query->paginate($perPage, ['*'], 'page', $page);
+
+        return response()->json([
+            'status'   => true,
+            'message'  => 'Total user fetched successfully',
+            'userdata' => $alluser,
         ]);
     }
 

@@ -540,9 +540,11 @@ public function pickedUpItems(Request $request)
             ];
         });
 
+
         return response()->json([
             'success' => true,
             'message' => 'Picked up items retrieved successfully',
+            'order_status'=> $order->status,
             'data' => $data,
         ]);
 

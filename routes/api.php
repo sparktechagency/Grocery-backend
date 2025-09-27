@@ -290,6 +290,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['jwt.auth', 'admin']], funct
 
     //total user
     Route::get('totalUser', [HomeController::class, 'totalUser']);
+    Route::get('totalUser', [HomeController::class, 'totalUseS']);
 
     Route::controller(NotificationController::class)->group(function(){
         Route::post('sendNormalNotifications', 'sendBulkNormalNotification');

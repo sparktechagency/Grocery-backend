@@ -227,89 +227,89 @@ class ShopperController extends Controller
         ]);
     }
 
-public function allShoppersForAdmin(Request $request)
-{
-    $hasSearch = $request->filled('search');
-    $hasPagination = $request->has('per_page') || $request->has('page');
-    $selectFields = ['id', 'name', 'address', 'email', 'phone', 'role', 'photo', 'total_delivery', 'status'];
+    public function allShoppersForAdmin(Request $request)
+    {
+        $hasSearch = $request->filled('search');
+        $hasPagination = $request->has('per_page') || $request->has('page');
+        $selectFields = ['id', 'name', 'address', 'email', 'phone', 'role', 'photo', 'total_delivery', 'status'];
 
-    if ($hasSearch || $hasPagination) {
-        $validatedData = $request->validate([
-            'search' => 'nullable|string|max:255',
-            'per_page' => 'sometimes|integer|min:1|max:100',
-            'page' => 'sometimes|integer|min:1',
-        ]);
+        if ($hasSearch || $hasPagination) {
+            $validatedData = $request->validate([
+                'search' => 'nullable|string|max:255',
+                'per_page' => 'sometimes|integer|min:1|max:100',
+                'page' => 'sometimes|integer|min:1',
+            ]);
 
-        $query = User::where('role', 'shopper')->select($selectFields);
+            $query = User::where('role', 'shopper')->select($selectFields);
 
-        if ($hasSearch) {
-            $searchTerm = trim((string) $request->query('search'));
-            $searchTerm = preg_replace('/\s+/', ' ', $searchTerm);
-            $query->where(function($q) use ($searchTerm) {
-                $q->where('name', 'LIKE', '%' . $searchTerm . '%')
-                  ->orWhere('address', 'LIKE', '%' . $searchTerm . '%')
-                  ->orWhere('email', 'LIKE', '%' . $searchTerm . '%')
-                  ->orWhere('phone', 'LIKE', '%' . $searchTerm . '%');
+            if ($hasSearch) {
+                $searchTerm = trim((string) $request->query('search'));
+                $searchTerm = preg_replace('/\s+/', ' ', $searchTerm);
+                $query->where(function($q) use ($searchTerm) {
+                    $q->where('name', 'LIKE', '%' . $searchTerm . '%')
+                    ->orWhere('address', 'LIKE', '%' . $searchTerm . '%')
+                    ->orWhere('email', 'LIKE', '%' . $searchTerm . '%')
+                    ->orWhere('phone', 'LIKE', '%' . $searchTerm . '%');
+                });
+            }
+
+            $perPage = $request->query('per_page', 10);
+            $shoppers = $query->orderBy('id', 'desc')->paginate($perPage);
+
+            // Transform photo URLs and ensure status is present
+            $shoppers->getCollection()->transform(function ($shopper) {
+                $shopper->photo = $this->buildImageUrl($shopper->photo);
+                $shopper->status = $shopper->status ?? 'inactive';
+                return $shopper;
             });
+
+            // Calculate total and total_active_shoppers for paginated results
+            $total = $shoppers->total();
+            $totalActive = User::where('role', 'shopper')->where('status', 'active');
+            if ($hasSearch) {
+                $totalActive->where(function($q) use ($searchTerm) {
+                    $q->where('name', 'LIKE', '%' . $searchTerm . '%')
+                    ->orWhere('address', 'LIKE', '%' . $searchTerm . '%')
+                    ->orWhere('email', 'LIKE', '%' . $searchTerm . '%')
+                    ->orWhere('phone', 'LIKE', '%' . $searchTerm . '%');
+                });
+            }
+            $total_active_shoppers = $totalActive->count();
+
+            $response = [
+                'status' => true,
+                'message' => 'All shoppers fetched successfully',
+                'total' => $total,
+                'total_active_shoppers' => $total_active_shoppers,
+                'data' => $shoppers->items(),
+            ];
+
+            return response()->json($response);
         }
 
-        $perPage = $request->query('per_page', 10);
-        $shoppers = $query->orderBy('id', 'desc')->paginate($perPage);
+        $shoppers = User::where('role', 'shopper')
+            ->select($selectFields)
+            ->orderBy('id', 'desc')
+            ->get();
 
         // Transform photo URLs and ensure status is present
-        $shoppers->getCollection()->transform(function ($shopper) {
+        $shoppers = $shoppers->map(function ($shopper) {
             $shopper->photo = $this->buildImageUrl($shopper->photo);
             $shopper->status = $shopper->status ?? 'inactive';
             return $shopper;
         });
 
-        // Calculate total and total_active_shoppers for paginated results
-        $total = $shoppers->total();
-        $totalActive = User::where('role', 'shopper')->where('status', 'active');
-        if ($hasSearch) {
-            $totalActive->where(function($q) use ($searchTerm) {
-                $q->where('name', 'LIKE', '%' . $searchTerm . '%')
-                  ->orWhere('address', 'LIKE', '%' . $searchTerm . '%')
-                  ->orWhere('email', 'LIKE', '%' . $searchTerm . '%')
-                  ->orWhere('phone', 'LIKE', '%' . $searchTerm . '%');
-            });
-        }
-        $total_active_shoppers = $totalActive->count();
+        $total = $shoppers->count();
+        $total_active_shoppers = $shoppers->where('status', 'active')->count();
 
-        $response = [
+        return response()->json([
             'status' => true,
             'message' => 'All shoppers fetched successfully',
             'total' => $total,
             'total_active_shoppers' => $total_active_shoppers,
-            'data' => $shoppers->items(),
-        ];
-
-        return response()->json($response);
+            'data' => $shoppers,
+        ]);
     }
-
-    $shoppers = User::where('role', 'shopper')
-        ->select($selectFields)
-        ->orderBy('id', 'desc')
-        ->get();
-
-    // Transform photo URLs and ensure status is present
-    $shoppers = $shoppers->map(function ($shopper) {
-        $shopper->photo = $this->buildImageUrl($shopper->photo);
-        $shopper->status = $shopper->status ?? 'inactive';
-        return $shopper;
-    });
-
-    $total = $shoppers->count();
-    $total_active_shoppers = $shoppers->where('status', 'active')->count();
-
-    return response()->json([
-        'status' => true,
-        'message' => 'All shoppers fetched successfully',
-        'total' => $total,
-        'total_active_shoppers' => $total_active_shoppers,
-        'data' => $shoppers,
-    ]);
-}
 
     public function pendingOrders(Request $request)
     {
@@ -690,13 +690,16 @@ public function allShoppersForAdmin(Request $request)
         ]);
 
         DB::beginTransaction();
+
         try {
             $auth = auth()->user();
+
+            // Step 1: Validate order ownership
             $order = Order::where('id', $validatedData['order_id'])
                 ->where('shopper_id', $auth->id)
                 ->firstOrFail();
 
-            // Verify order is in a valid state for delivery
+            // Step 2: Check if order is ready for delivery
             if (!in_array($order->status, ['order_pickedup'])) {
                 return response()->json([
                     'status' => false,
@@ -704,39 +707,51 @@ public function allShoppersForAdmin(Request $request)
                 ], 400);
             }
 
-
-
-            // Get payment details if available
+            // Step 3: Prepare notification message
             $payment = Payment::where('order_id', $order->id)->first();
-            $message = 'Your order has been arrived. Please collect it';
-            
+            $message = 'Your order has arrived. Please collect it';
+
             if ($payment && !is_null($payment->shopper_amount)) {
                 $message .= sprintf('. You will get $%.2f', $payment->shopper_amount);
             }
 
-            // Create notification for the customer
-            Notification::create([
-                'user_id' => $order->user_id,
-                'title' => "Your order #{$order->order_number} has been arrive",
-                'message' => $message,
-                'image' => null,
-                'type' => 'shopper arrive',
-                'order_id' => 53,
-                'shopper_id' => $auth->id,
-            ]);
+            // Step 4: Try to create notification
+            try {
+                $notification = Notification::create([
+                    'user_id'    => $order->user_id,
+                    'title'      => "Your order #{$order->order_number} has arrived",
+                    'message'    => $message,
+                    'image'      => null,
+                    'type'       => 'shopper arrive',
+                    'order_id'   => $order->id,
+                    'shopper_id' => $auth->id,
+                ]);
 
+                if (!$notification) {
+                    throw new \Exception('Notification creation failed');
+                }
+            } catch (\Exception $e) {
+                DB::rollBack();
+                Log::error('Notification send failed: ' . $e->getMessage());
+
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Notification send failed. Please try again later.'
+                ], 500);
+            }
+
+            // Step 5: Commit if everything works
             DB::commit();
 
             return response()->json([
                 'status' => true,
                 'message' => 'Delivery notification sent successfully',
                 'data' => [
-                    'order_id' => $order->id,
-                    'status' => $order->status,
+                    'order_id'   => $order->id,
+                    'status'     => $order->status,
                     'updated_at' => $order->updated_at
                 ]
             ]);
-
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             DB::rollBack();
             return response()->json([
@@ -745,7 +760,7 @@ public function allShoppersForAdmin(Request $request)
             ], 404);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Delivery notification failed: ' . $e->getMessage());
+            Log::error('Delivery notification process failed: ' . $e->getMessage());
             return response()->json([
                 'status' => false,
                 'message' => 'Failed to process delivery notification'
@@ -754,24 +769,24 @@ public function allShoppersForAdmin(Request $request)
     }
 
 
-public function activeInactiveShopper(Request $request)
-{
-    $validatedData = $request->validate([
-        'status' => 'required|string|in:active,inactive',
-    ]);
+    public function activeInactiveShopper(Request $request)
+    {
+        $validatedData = $request->validate([
+            'status' => 'required|string|in:active,inactive',
+        ]);
 
-    $user = auth()->user();
-    $user->status = $validatedData['status'];
-    $user->save();
+        $user = auth()->user();
+        $user->status = $validatedData['status'];
+        $user->save();
 
-    return response()->json([
-        'success' => true,
-        'message' => 'Shopper status updated successfully.',
-        'data' => [
-            'status' => $user->status,
-        ],
-    ]);
-}
+        return response()->json([
+            'success' => true,
+            'message' => 'Shopper status updated successfully.',
+            'data' => [
+                'status' => $user->status,
+            ],
+        ]);
+    }
 
     public function getShopperStatus(Request $request)
     {
@@ -786,52 +801,52 @@ public function activeInactiveShopper(Request $request)
     }
 
 
-public function updateShopper(Request $request)
-{
-    $validatedData = $request->validate([
-        'shopper_id' => 'required|exists:users,id',
-        'order_id' => 'required|exists:orders,id',
-    ]);
+    public function updateShopper(Request $request)
+    {
+        $validatedData = $request->validate([
+            'shopper_id' => 'required|exists:users,id',
+            'order_id' => 'required|exists:orders,id',
+        ]);
 
-    // Find the order
-    $order = Order::find($validatedData['order_id']);
-    if (!$order) {
+        // Find the order
+        $order = Order::find($validatedData['order_id']);
+        if (!$order) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Order not found.',
+            ], 404);
+        }
+
+        // Find the new shopper
+        $shopper = User::where('id', $validatedData['shopper_id'])
+            ->where('role', 'shopper')
+            ->first();
+
+        if (!$shopper) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Shopper not found.',
+            ], 404);
+        }
+
+        // Assign the new shopper to the order
+        $order->shopper_id = $shopper->id;
+        $order->save();
+
         return response()->json([
-            'success' => false,
-            'message' => 'Order not found.',
-        ], 404);
-    }
-
-    // Find the new shopper
-    $shopper = User::where('id', $validatedData['shopper_id'])
-        ->where('role', 'shopper')
-        ->first();
-
-    if (!$shopper) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Shopper not found.',
-        ], 404);
-    }
-
-    // Assign the new shopper to the order
-    $order->shopper_id = $shopper->id;
-    $order->save();
-
-    return response()->json([
-        'success' => true,
-        'message' => 'Shopper assigned to order successfully.',
-        'data' => [
-            'order_id' => $order->id,
-            'shopper' => [
-                'id' => $shopper->id,
-                'name' => $shopper->name,
-                'email' => $shopper->email,
-                'phone' => $shopper->phone,
-                'address' => $shopper->address,
-                'photo' => $this->buildImageUrl($shopper->photo),
+            'success' => true,
+            'message' => 'Shopper assigned to order successfully.',
+            'data' => [
+                'order_id' => $order->id,
+                'shopper' => [
+                    'id' => $shopper->id,
+                    'name' => $shopper->name,
+                    'email' => $shopper->email,
+                    'phone' => $shopper->phone,
+                    'address' => $shopper->address,
+                    'photo' => $this->buildImageUrl($shopper->photo),
+                ],
             ],
-        ],
-    ]);
-}
+        ]);
+    }
 }
