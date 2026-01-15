@@ -1,5 +1,4 @@
 <?php
-
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\admin\StoreController;
@@ -148,22 +147,22 @@ Route::prefix('app')->middleware('jwt.auth')->group(function(){
     Route::prefix('payment')->middleware('jwt.auth')->group(function() {
         // Card payments
         Route::post('create-intent', [PaymentController::class, 'createPaymentIntent']);
-        Route::post('confirm', [PaymentController::class, 'confirmPayment']); 
+        Route::post('confirm', [PaymentController::class, 'confirmPayment']);
         Route::get('status/{payment_id}', [PaymentController::class, 'getPaymentStatus']);
         Route::post('reorder/{order_id}', [PaymentController::class, 'reorder']);
         Route::get('getAllTransactions', [PaymentController::class, 'getAllTransactions']);
-        
+
         Route::post('create-crypto', [PaymentController::class, 'createCryptoPayment']);
         Route::post('confirm-crypto', [PaymentController::class, 'confirmCryptoPayment']);
         Route::post('crypto/webhook', [PaymentController::class, 'handleCryptoWebhook'])
             ->name('api.payments.crypto.webhook')
             ->withoutMiddleware(['jwt.auth']); // Webhook needs to be public
-            
+
         // Crypto payment callbacks
         Route::get('crypto/success', [PaymentController::class, 'cryptoPaymentSuccess'])
             ->name('api.payments.crypto.success')
             ->withoutMiddleware(['jwt.auth']);
-            
+
         Route::get('crypto/cancel', [PaymentController::class, 'cryptoPaymentCancel'])
             ->name('api.payments.crypto.cancel')
             ->withoutMiddleware(['jwt.auth']);
@@ -171,8 +170,8 @@ Route::prefix('app')->middleware('jwt.auth')->group(function(){
 
     //Orders
     Route::prefix('orders')->middleware('jwt.auth')->group(function() {
-        Route::get('/', [OrderController::class, 'getOrders']);           
-        Route::get('/{id}', [OrderController::class, 'getOrderDetails']); 
+        Route::get('/', [OrderController::class, 'getOrders']);
+        Route::get('/{id}', [OrderController::class, 'getOrderDetails']);
         Route::post('/{id}/status', [OrderController::class, 'updateOrderStatus']);
         Route::get('/{id}/track', [OrderController::class, 'trackOrder']);
         Route::post('pickedUpItems', [OrderController::class, 'pickedUpItems']);
@@ -197,7 +196,7 @@ Route::prefix('shopper')->middleware('jwt.auth')->group(function(){
 });
 
 
-//Social login 
+//Social login
 Route::prefix('social')->group(function () {
     Route::get('login', [AuthController::class, 'socialLogin']);
     Route::post('google/callback', [AuthController::class, 'googleCallback']);
