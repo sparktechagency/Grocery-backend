@@ -17,7 +17,7 @@ return new class extends Migration
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
             $table->string('latitude');
             $table->string('longitude');
-            $table->softDeletes();
+            // $table->softDeletes();
             $table->timestamps();
         });
     }

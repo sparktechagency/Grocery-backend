@@ -25,7 +25,7 @@ return new class extends Migration
             $table->decimal('exchange_rate', 15, 8)->nullable(); 
             $table->integer('confirmations')->default(0); 
             $table->foreign('order_id')->references('id')->on('orders')->onDelete('cascade');
-            $table->softDeletes();
+            // $table->softDeletes();
             $table->timestamps();
         });
     }

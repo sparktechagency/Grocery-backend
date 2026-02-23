@@ -12,11 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('orders', function (Blueprint $table) {
-            $table->timestamp('confirmed_at')->nullable();
-            $table->timestamp('picked_up_at')->nullable();
-            $table->timestamp('out_for_delivery_at')->nullable();
-            $table->timestamp('delivered_at')->nullable();
-            $table->timestamp('cancelled_at')->nullable();
+            // $table->timestamp('confirmed_at')->nullable();
+            // $table->timestamp('picked_up_at')->nullable();
+            // $table->timestamp('out_for_delivery_at')->nullable();
+            // $table->timestamp('delivered_at')->nullable();
+            // $table->timestamp('cancelled_at')->nullable();
         });
     }
 
