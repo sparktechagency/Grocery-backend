@@ -17,7 +17,7 @@ class UserSeeder extends Seeder
         User::create([
             'name' => 'Admin User',
             'email' => 'admin@gmail.com',
-            'password' => Hash::make('123456a@'),
+            'password' => Hash::make('12345678'),
             'role' => 'admin',
             'phone' => '012351415415',
 
@@ -26,7 +26,7 @@ class UserSeeder extends Seeder
         User::create([
             'name' => 'Shopper User',
             'email' => 'shopper@gmail.com',
-            'password' => Hash::make('123456a@'),
+            'password' => Hash::make('12345678'),
             'role' => 'shopper',
             'phone' => '01564154154158',
         ]);
@@ -34,7 +34,7 @@ class UserSeeder extends Seeder
         User::create([
             'name' => 'Shopper User',
             'email' => 'shopper1@gmail.com',
-            'password' => Hash::make('123456a@'),
+            'password' => Hash::make('12345678'),
             'role' => 'shopper',
             'phone' => '015641541541',
         ]);
@@ -43,7 +43,7 @@ class UserSeeder extends Seeder
         User::create([
             'name' => 'User',
             'email' => 'user@gmail.com',
-            'password' => Hash::make('123456a@'),
+            'password' => Hash::make('12345678'),
             'role' => 'user',
             'phone' => '0154185418541',
         ]);
@@ -51,7 +51,7 @@ class UserSeeder extends Seeder
         User::create([
            'name' => 'User',
             'email' => 'user1@gmail.com',
-            'password' => Hash::make('123456a@'),
+            'password' => Hash::make('12345678'),
             'role' => 'user',
             'phone' => '014512521541',
 

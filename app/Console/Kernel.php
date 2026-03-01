@@ -2,6 +2,7 @@
 
 namespace App\Console;
 
+use App\Jobs\ShowDataLogJob;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 use App\Jobs\FetchKrogerProductsJob;
@@ -14,10 +15,13 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule): void
     {
         // $schedule->command('inspire')->hourly();
-        
+
         // Run the main Kroger job every day at 12:01 PM
         // This will break into smaller, manageable jobs
-        $schedule->job(new FetchKrogerProductsJob(null, null, 1, 50, true))->dailyAt('13:13');
+        $schedule->job(new FetchKrogerProductsJob(null, null, 1, 50, true))
+            ->monthly();
+//            ->everyMinute();
+//        $schedule->job(new ShowDataLogJob())->everyMinute()->withoutOverlapping();
     }
 
     /**

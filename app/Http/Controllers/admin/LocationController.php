@@ -8,6 +8,7 @@ use App\Models\Location;
 use App\Models\Geolocation;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class LocationController extends Controller
 {
@@ -33,7 +34,8 @@ class LocationController extends Controller
                 'grant_type' => 'client_credentials',
                 'scope' => env('KROGER_SCOPES'),
             ]);
-        
+
+
             if (!$tokenResponse->ok()) {
                 DB::rollBack();
                 return response()->json([
@@ -41,19 +43,19 @@ class LocationController extends Controller
                     'message' => 'Unable to authenticate with Kroger. Try again later.',
                 ]);
             }
-        
+
             $accessToken = $tokenResponse['access_token'];
 
             $locationResponse = Http::withToken($accessToken)
                 ->get('https://api.kroger.com/v1/locations', [
                     'filter.lat.near' => $validatedData['latitude'],
                     'filter.lon.near' => $validatedData['longitude'],
-                    'filter.radiusInMiles' => 1,
+                    'filter.radiusInMiles' => 20,
                     'filter.limit' => 9999,
                 ]);
 
             $locations = $locationResponse->json();
-
+            Log::info('Locations created',$locationResponse->json());
             if (!empty($locations['data']) && is_array($locations['data'])) {
                 foreach ($locations['data'] as $location) {
                     Location::create([

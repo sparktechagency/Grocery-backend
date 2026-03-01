@@ -7,6 +7,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use App\Models\Term;
 use App\Models\Product;
@@ -59,17 +60,17 @@ class FetchKrogerProductsJob implements ShouldQueue
     private function processMainJob()
     {
         Log::info('Starting main Kroger job - breaking into smaller jobs');
-        
+
         // Clear existing products only if this is the main job
         DB::statement('SET FOREIGN_KEY_CHECKS=0;');
         Product::truncate();
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
-        
+
         $locations = Location::select('id', 'locationId', 'storeName')->get();
         $terms = Term::select('id', 'name')->get();
-        
+
         $totalJobs = 0;
-        
+
         foreach ($locations as $location) {
             foreach ($terms as $term) {
                 // Dispatch individual job for each location/term combination
@@ -80,11 +81,11 @@ class FetchKrogerProductsJob implements ShouldQueue
                     50,
                     false
                 )->delay(now()->addSeconds(rand(1, 10))); // Random delay to avoid rate limiting
-                
+
                 $totalJobs++;
             }
         }
-        
+
         Log::info("Main job completed - dispatched {$totalJobs} sub-jobs");
     }
 
@@ -248,7 +249,7 @@ class FetchKrogerProductsJob implements ShouldQueue
     private function processProductChunk($products, $location, $term)
     {
         $productData = [];
-        
+
         foreach ($products as $product) {
             $imageUrl = $this->extractImages($product);
             $item = $product['items'][0] ?? null;
@@ -274,7 +275,7 @@ class FetchKrogerProductsJob implements ShouldQueue
         }
 
         if (!empty($productData)) {
-            Product::insert($productData);
+            Product::create($productData);
         }
     }
 
@@ -283,7 +284,7 @@ class FetchKrogerProductsJob implements ShouldQueue
         if (empty($product['images']) || !is_array($product['images'])) {
             return null;
         }
-    
+
         // First, try to find the 'front' perspective
         foreach ($product['images'] as $image) {
             if (($image['perspective'] ?? '') === 'front') {
@@ -296,7 +297,7 @@ class FetchKrogerProductsJob implements ShouldQueue
                 }
             }
         }
-    
+
         // If no 'front' perspective found, fall back to the first xlarge image
         foreach ($product['images'] as $image) {
             if (!empty($image['sizes']) && is_array($image['sizes'])) {
@@ -307,7 +308,150 @@ class FetchKrogerProductsJob implements ShouldQueue
                 }
             }
         }
-    
+
         return null;
     }
+
+//    public $timeout = 600;
+//    public $tries = 3;
+//
+//    private $locationId;
+//    private $termId;
+//
+//    public function __construct($locationId, $termId)
+//    {
+//        $this->locationId = $locationId;
+//        $this->termId = $termId;
+//    }
+//
+//    public function handle()
+//    {
+//        $location = Location::where('locationId', $this->locationId)->first();
+//        $term = Term::find($this->termId);
+//
+//        if (!$location || !$term) {
+//            Log::warning("Location or Term missing");
+//            return;
+//        }
+//
+//        $accessToken = $this->getAccessToken();
+//        if (!$accessToken) {
+//            return;
+//        }
+//
+//        $this->fetchProducts($accessToken, $location, $term);
+//    }
+//
+//    private function getAccessToken()
+//    {
+//        return Cache::remember('kroger_access_token', 3500, function () {
+//
+//            $response = Http::asForm()
+//                ->withBasicAuth(
+//                    config('services.kroger.client_id'),
+//                    config('services.kroger.client_secret')
+//                )
+//                ->post('https://api.kroger.com/v1/connect/oauth2/token', [
+//                    'grant_type' => 'client_credentials',
+//                    'scope' => config('services.kroger.scopes'),
+//                ]);
+//
+//            if (!$response->ok()) {
+//                Log::error('Token failed');
+//                return null;
+//            }
+//
+//            return $response['access_token'];
+//        });
+//    }
+//
+//    private function fetchProducts($token, $location, $term)
+//    {
+//        $start = 0;
+//        $limit = 50;
+//        $maxStart = 250;
+//
+//        while ($start <= $maxStart) {
+//
+//            $response = Http::withToken($token)
+//                ->retry(3, 1000)
+//                ->get('https://api.kroger.com/v1/products', [
+//                    'filter.limit' => $limit,
+//                    'filter.term' => $term->name,
+//                    'filter.start' => $start,
+//                    'filter.locationId' => $location->locationId,
+//                ]);
+//
+//            if ($response->failed()) {
+//                Log::error("API Failed", [
+//                    'term' => $term->name,
+//                    'location' => $location->locationId
+//                ]);
+//                return;
+//            }
+//
+//            $data = $response->json()['data'] ?? [];
+//
+//            if (empty($data)) {
+//                break;
+//            }
+//
+//            $this->storeProducts($data, $location, $term);
+//
+//            if (count($data) < $limit) {
+//                break;
+//            }
+//
+//            $start += $limit;
+//        }
+//
+//        Log::info("Completed", [
+//            'location' => $location->locationId,
+//            'term' => $term->name
+//        ]);
+//    }
+//
+//    private function storeProducts($products, $location, $term)
+//    {
+//        $insertData = [];
+//
+//        foreach ($products as $product) {
+//
+//            $item = $product['items'][0] ?? null;
+//
+//            $insertData[] = [
+//                'productId' => $product['productId'] ?? null,
+//                'locationId' => $location->locationId,
+//                'name' => $product['description'] ?? null,
+//                'brand' => $product['brand'] ?? null,
+//                'term' => $term->name,
+//                'storeName' => $location->storeName,
+//                'regular_price' => $item['price']['regular'] ?? null,
+//                'promo_price' => $item['price']['promo'] ?? null,
+//                'images' => $this->extractImage($product),
+//                'created_at' => now(),
+//                'updated_at' => now(),
+//            ];
+//        }
+//
+//        // prevent duplicate
+//        Product::upsert(
+//            $insertData,
+//            ['productId', 'locationId'],
+//            ['name', 'brand', 'regular_price', 'promo_price', 'images', 'updated_at']
+//        );
+//    }
+//
+//    private function extractImage($product)
+//    {
+//        foreach ($product['images'] ?? [] as $image) {
+//            foreach ($image['sizes'] ?? [] as $size) {
+//                if (($size['size'] ?? null) === 'xlarge') {
+//                    return $size['url'] ?? null;
+//                }
+//            }
+//        }
+//
+//        return null;
+//    }
 }

@@ -39,14 +39,14 @@ class HomeController extends Controller
             'search' => 'required|string|max:255',
             'per_page' => 'sometimes|integer|min:1|max:100',
         ]);
-    
+
         $search = $request->input('search');
         $perPage = $request->input('per_page', 20);
-    
+
         $products = Product::select('id','name','images','regular_price','promo_price','storeName','categories')
             ->whereRaw("MATCH(name) AGAINST (? IN BOOLEAN MODE)", [$search])
             ->paginate($perPage);
-    
+
         return response()->json([
             'status' => true,
             'message' => 'Products fetched successfully',
@@ -65,11 +65,11 @@ class HomeController extends Controller
         $validatedData = $request->validate([
             'biometric' => 'required|string|max:255',
         ]);
-    
+
         $user = auth()->user();
         $user->biometric = $validatedData['biometric'];
         $user->save();
-    
+
         return response()->json([
             'status' => true,
             'message' => 'Face ID added successfully',
@@ -117,7 +117,7 @@ class HomeController extends Controller
                 'updated_at' => $user->updated_at
             ]
         ];
-        
+
         return response()->json($response);
     }
 
@@ -154,7 +154,7 @@ class HomeController extends Controller
             ], 400);
         }
         $token = JWTAuth::fromUser($user);
-        
+
         $response = [
             'status' => true,
             'message' => 'Finger ID fetched successfully',
@@ -176,7 +176,7 @@ class HomeController extends Controller
                 'updated_at' => $user->updated_at
             ]
         ];
-        
+
         return response()->json($response);
     }
 
@@ -189,16 +189,16 @@ class HomeController extends Controller
             'price' => 'sometimes|numeric',
             'per_page' => 'sometimes|integer|min:1|max:100',
         ]);
-    
+
         $search = $request->input('search');
         $perPage = $request->input('per_page', 20);
         $storeName = $request->input('storeName');
         $categories = $request->input('categories');
         $price = $request->input('price');
-    
+
         $query = Product::select('*')
             ->whereRaw("MATCH(name) AGAINST (? IN BOOLEAN MODE)", [$search]);
-    
+
         if (!empty($storeName)) {
             $storeNames = array_map('trim', explode(',', $storeName));
             $query->where(function($q) use ($storeNames) {
@@ -207,7 +207,7 @@ class HomeController extends Controller
                 }
             });
         }
-    
+
         if (!empty($categories)) {
             $categoryList = array_map('trim', explode(',', $categories));
             $query->where(function($q) use ($categoryList) {
@@ -217,13 +217,13 @@ class HomeController extends Controller
                 }
             });
         }
-    
+
         if (!empty($price)) {
             $query->where('regular_price', '>=', $price);
         }
-    
+
         $products = $query->orderBy('created_at', 'desc')->paginate($perPage);
-    
+
         return response()->json([
             'status' => true,
             'message' => 'Products fetched successfully',
@@ -249,7 +249,7 @@ class HomeController extends Controller
             ->unique()
             ->values()
             ->toArray();
-    
+
         return response()->json([
             'status' => true,
             'message' => 'Categories fetched successfully',
@@ -284,25 +284,25 @@ class HomeController extends Controller
         ]);
     }
 
-    
+
     public function searchKrogerProducts(Request $request)
     {
         $validatedData = $request->validate([
             'search' => 'required|string|max:255',
             'per_page' => 'sometimes|integer|min:1|max:100',
         ]);
-    
+
         $search = $request->input('search');
         $perPage = $request->input('per_page', 20);
-    
+
         $products = Product::select([
-            'id', 'name', 'images', 'regular_price', 'promo_price', 
+            'id', 'name', 'images', 'regular_price', 'promo_price',
             'brand', 'categories', 'storeName', 'stockLevel'
         ])
         ->whereRaw("MATCH(name) AGAINST (? IN BOOLEAN MODE)", [$search])
         ->orderBy('created_at', 'desc')
         ->paginate($perPage);
-    
+
         return response()->json([
             'status' => true,
             'data' => $products->items(),
@@ -315,7 +315,7 @@ class HomeController extends Controller
         ]);
     }
 
-    
+
     public function fetchKrogerStores(Request $request)
     {
             $allStores = Product::query()
@@ -337,7 +337,7 @@ class HomeController extends Controller
 
     public function searchProductByStore(Request $request, $store)
     {
-        
+
         $validatedData = $request->validate([
             'per_page' => 'sometimes|integer|min:1|max:100',
             'page' => 'sometimes|integer|min:1',
@@ -432,7 +432,7 @@ class HomeController extends Controller
     public function updateProfile(Request $request)
     {
         $user = auth()->user();
-        
+
         $request->validate([
             'name' => 'sometimes|string|max:255',
             'phone' => [
@@ -443,33 +443,33 @@ class HomeController extends Controller
             'address' => 'sometimes|string|max:255',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
         ]);
-    
+
         $user->name = $request->name;
         $user->phone = $request->phone;
         $user->address = $request->address;
-    
+
         // Handle photo upload
         if ($request->hasFile('photo')) {
             // Delete old photo if exists
             if ($user->photo && file_exists(public_path($user->photo))) {
                 unlink(public_path($user->photo));
             }
-            
+
             $image = $request->file('photo');
             $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
             $destinationPath = public_path('uploads/profiles');
-            
+
             // Create directory if it doesn't exist
             if (!File::exists($destinationPath)) {
                 File::makeDirectory($destinationPath, 0755, true);
             }
-            
+
             $image->move($destinationPath, $imageName);
             $user->photo = 'uploads/profiles/' . $imageName;
         }
-    
+
         $user->save();
-    
+
         return response()->json([
             'status' => true,
             'message' => 'Profile updated successfully',
@@ -495,16 +495,16 @@ class HomeController extends Controller
             if ($user->photo && file_exists(public_path($user->photo))) {
                 unlink(public_path($user->photo));
             }
-            
+
             $image = $request->file('photo');
             $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
             $destinationPath = public_path('uploads/profiles');
-            
+
             // Create directory if it doesn't exist
             if (!File::exists($destinationPath)) {
                 File::makeDirectory($destinationPath, 0755, true);
             }
-            
+
             $image->move($destinationPath, $imageName);
             $user->photo = 'uploads/profiles/' . $imageName;
         }
@@ -526,28 +526,28 @@ class HomeController extends Controller
             'per_page' => 'sometimes|integer|min:1|max:100',
             'page' => 'sometimes|integer|min:1',
         ]);
-    
+
         $user = auth()->user();
         $userLocation = $user->userlocations;
-    
+
         if (!$userLocation) {
             return response()->json([
                 'status' => false,
                 'message' => 'User location not found',
             ], 404);
         }
-    
-        $perPage = $request->input('per_page', 10); 
-        $page = $request->input('page', 1); 
+
+        $perPage = $request->input('per_page', 10);
+        $page = $request->input('page', 1);
         $radius = 10; // 10 km radius
-    
+
             $shoppers = User::with(['userlocations' => function($query) use ($userLocation, $radius) {
                 $query->select('user_id', 'latitude', 'longitude')
-                    ->selectRaw("(6371 * acos(cos(radians(?)) 
-                                * cos(radians(latitude)) 
-                                * cos(radians(longitude) - radians(?)) 
-                                + sin(radians(?)) 
-                                * sin(radians(latitude)))) AS distance", 
+                    ->selectRaw("(6371 * acos(cos(radians(?))
+                                * cos(radians(latitude))
+                                * cos(radians(longitude) - radians(?))
+                                + sin(radians(?))
+                                * sin(radians(latitude)))) AS distance",
                                 [$userLocation->latitude, $userLocation->longitude, $userLocation->latitude])
                     ->whereNull('deleted_at')
                     ->having('distance', '<=', $radius)
@@ -556,19 +556,19 @@ class HomeController extends Controller
             ->where('role', 'shopper')
             ->whereHas('userlocations', function($query) use ($userLocation, $radius) {
                 $query->selectRaw("1")
-                    ->selectRaw("(6371 * acos(cos(radians(?)) 
-                                * cos(radians(latitude)) 
-                                * cos(radians(longitude) - radians(?)) 
-                                + sin(radians(?)) 
-                                * sin(radians(latitude)))) AS distance", 
+                    ->selectRaw("(6371 * acos(cos(radians(?))
+                                * cos(radians(latitude))
+                                * cos(radians(longitude) - radians(?))
+                                + sin(radians(?))
+                                * sin(radians(latitude)))) AS distance",
                                 [$userLocation->latitude, $userLocation->longitude, $userLocation->latitude])
                     ->whereNull('deleted_at')
                     ->having('distance', '<=', $radius);
             })
             ->paginate($perPage, ['*'], 'page', $page);
-        
+
         // Note: top-level distance removed. Read distance from `userlocations.distance` on the client.
-        
+
         return response()->json([
             'status' => true,
             'message' => 'Shoppers retrieved successfully',
@@ -650,8 +650,8 @@ class HomeController extends Controller
         //     ->having('distance_km', '<=', $radiusKm)
         //     ->orderBy('distance_km', 'asc')
         //     ->get();
-        
-        
+
+
         //     return response()->json([
         //     'status' => true,
         //     'message' => 'Personal shopper retrieved successfully',
@@ -703,12 +703,12 @@ class HomeController extends Controller
 
         }
 
-        
+
     }
 
 
     public function removeShopper(Request $request)
-    { 
+    {
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
         ]);
@@ -741,7 +741,7 @@ class HomeController extends Controller
             ], 400);
         }
 
-        
+
 
     }
 
@@ -876,7 +876,7 @@ class HomeController extends Controller
                 // Parse the images string into an array
                 $images = $product->images ? json_decode($product->images, true) : [];
                 $images = is_array($images) ? $images : [];
-                
+
                 // Format the product data
                 return [
                     'id' => $product->id,
@@ -943,7 +943,7 @@ class HomeController extends Controller
     {
         try {
             $user = User::findOrFail($id);
-            
+
             // Check if user is actually a shopper
             if ($user->role !== 'shopper') {
                 return response()->json([
@@ -986,7 +986,7 @@ class HomeController extends Controller
     // {
     //      try {
     //         $user = User::findOrFail($id);
-            
+
     //         // Check if user is actually a shopper
     //         if ($user->role !== 'shopper') {
     //             return response()->json([
@@ -1032,7 +1032,7 @@ class HomeController extends Controller
         ]);
 
         $filter = $request->input('filter', 'weekly');
-        
+
         $totalEarnings = Payment::where('payment_status', 'completed')
             ->selectRaw('SUM(amount - IFNULL(shopper_amount, 0)) as net_earnings')
             ->value('net_earnings') ?? 0;
@@ -1047,7 +1047,7 @@ class HomeController extends Controller
 
         // Get chart data based on filter
         $chartData = $this->getChartData($filter);
-        
+
         // Transform chart_data to array of { day, total }
         $labels = $chartData['labels'] ?? [];
         $values = $chartData['data'] ?? [];
@@ -1056,9 +1056,11 @@ class HomeController extends Controller
             $chartPoints[] = [
                 'day' => is_numeric($label) ? (int) $label : (string) $label,
                 'total' => isset($values[$index]) ? (float) $values[$index] : 0.0,
+//            'day'=>rand(1,7),
+//                'total'=>rand(1000,99999)
             ];
         }
-        
+
         return response()->json([
             'status' => true,
             'message' => 'Data retreived successfully',
@@ -1074,7 +1076,7 @@ class HomeController extends Controller
     private function getChartData($filter)
     {
         $now = now();
-        
+
         switch ($filter) {
             case 'yearly':
                 return $this->getYearlyData($now);
@@ -1092,17 +1094,17 @@ class HomeController extends Controller
     {
         $data = [];
         $labels = [];
-        
+
         for ($i = 4; $i >= 0; $i--) {
             $year = $now->year - $i;
             $earnings = Payment::where('payment_status', 'completed')
                 ->whereYear('created_at', $year)
                 ->sum('amount');
-            
+
             $data[] = round($earnings, 2);
             $labels[] = $year;
         }
-        
+
         return [
             'labels' => $labels,
             'data' => $data,
@@ -1114,18 +1116,18 @@ class HomeController extends Controller
     {
         $data = [];
         $labels = [];
-        
+
         for ($i = 11; $i >= 0; $i--) {
             $month = $now->copy()->subMonths($i);
             $earnings = Payment::where('payment_status', 'completed')
                 ->whereYear('created_at', $month->year)
                 ->whereMonth('created_at', $month->month)
                 ->sum('amount');
-            
+
             $data[] = round($earnings, 2);
             $labels[] = $month->format('M');
         }
-        
+
         return [
             'labels' => $labels,
             'data' => $data,
@@ -1137,18 +1139,18 @@ class HomeController extends Controller
     {
         $data = [];
         $labels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        
+
         $startOfWeek = $now->copy()->startOfWeek();
-        
+
         for ($i = 0; $i < 7; $i++) {
             $date = $startOfWeek->copy()->addDays($i);
             $earnings = Payment::where('payment_status', 'completed')
                 ->whereDate('created_at', $date->format('Y-m-d'))
                 ->sum('amount');
-            
+
             $data[] = round($earnings, 2);
         }
-        
+
         return [
             'labels' => $labels,
             'data' => $data,
@@ -1161,18 +1163,18 @@ class HomeController extends Controller
         // Daily behaves like weekly: current week's days Sun-Sat
         $data = [];
         $labels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        
+
         $startOfWeek = $now->copy()->startOfWeek();
-        
+
         for ($i = 0; $i < 7; $i++) {
             $date = $startOfWeek->copy()->addDays($i);
             $earnings = Payment::where('payment_status', 'completed')
                 ->whereDate('created_at', $date->format('Y-m-d'))
                 ->sum('amount');
-            
+
             $data[] = round($earnings, 2);
         }
-        
+
         return [
             'labels' => $labels,
             'data' => $data,
@@ -1187,23 +1189,23 @@ class HomeController extends Controller
             'per_page' => 'sometimes|integer|min:1|max:100',
             'page' => 'sometimes|integer|min:1',
         ]);
-    
+
         $search = $request->input('search');
         $perPage = $request->input('per_page', 20);
         $page = $request->input('page', 1);
-    
+
         $query = Product::query();
-    
+
         if (!empty($search)) {
             $query->where(function($q) use ($search) {
                 $q->whereRaw("MATCH(name) AGAINST (? IN BOOLEAN MODE)", [$search]);
                 //   ->orWhere('name', 'LIKE', '%' . $search . '%');
             });
         }
-    
+
         $products = $query->orderBy('created_at', 'desc')
                          ->paginate($perPage, ['*'], 'page', $page);
-    
+
         return response()->json([
             'status' => true,
             'message' => 'Products fetched successfully',
@@ -1218,11 +1220,11 @@ class HomeController extends Controller
             'per_page' => 'sometimes|integer|min:1|max:100',
             'page' => 'sometimes|integer|min:1',
         ]);
-    
+
         $search = $request->input('search');
         $perPage = $request->input('per_page', 20);
         $page = $request->input('page', 1);
-    
+
         // Query the locations table directly for complete store information
         $query = \App\Models\Location::select([
             'locationId',
@@ -1234,7 +1236,7 @@ class HomeController extends Controller
             'latLng',
             'storeNumber'
         ]);
-    
+
         if (!empty($search)) {
             $query->where(function($q) use ($search) {
                 $q->where('storeName', 'like', "%{$search}%")
@@ -1242,10 +1244,10 @@ class HomeController extends Controller
                   ->orWhere('city', 'like', "%{$search}%");
             });
         }
-    
+
         $stores = $query->orderBy('storeName', 'asc')
                        ->paginate($perPage, ['*'], 'page', $page);
-    
+
         // Transform the data to split latLng into separate fields
         $transformedStores = $stores->getCollection()->map(function ($store) {
             $latLng = explode(',', $store->latLng);
@@ -1261,10 +1263,10 @@ class HomeController extends Controller
                 'storeNumber' => $store->storeNumber
             ];
         });
-    
+
         // Replace the collection with our transformed data
         $stores->setCollection($transformedStores);
-    
+
         return response()->json([
             'status' => true,
             'message' => 'Stores fetched successfully',
@@ -1280,17 +1282,17 @@ class HomeController extends Controller
                 'per_page' => 'sometimes|integer|min:1|max:100',
                 'page' => 'sometimes|integer|min:1',
             ]);
-        
+
             $search = $request->input('search');
             $perPage = $request->input('per_page', 20);
             $page = $request->input('page', 1);
-        
+
             $query = Order::with(['payments', 'user' => function($q) {
                 $q->select('id', 'name', 'email', 'phone', 'photo');
             }])
             ->whereNotNull('order_number')
             ->where('order_number', '!=', '');
-        
+
             // Apply search filter
             if (!empty($search)) {
                 $query->where(function($q) use ($search) {
@@ -1300,20 +1302,20 @@ class HomeController extends Controller
                       });
                 });
             }
-        
+
             $orders = $query->orderBy('created_at', 'desc')
                           ->paginate($perPage, ['*'], 'page', $page);
-            
+
             $orders->getCollection()->transform(function($order) {
                 $payment = $order->payments->first();
-                
+
                 // Add photo URL to user object
                 if ($order->user) {
-                    $order->user->photo = $order->user->photo 
-                        ? asset($order->user->photo) 
+                    $order->user->photo = $order->user->photo
+                        ? asset($order->user->photo)
                         : asset('uploads/profiles/no_image.jpeg');
                 }
-                
+
                 if ($payment) {
                     $order->total_amount = $payment->amount;
                     $order->payment_method = $payment->payment_method;
@@ -1325,7 +1327,7 @@ class HomeController extends Controller
                 unset($order->payments);
                 return $order;
             });
-        
+
             return response()->json([
                 'status' => true,
                 'message' => 'Transactions fetched successfully',
@@ -1345,7 +1347,7 @@ class HomeController extends Controller
     {
         try {
             $order = Order::with([
-                'payments', 
+                'payments',
                 'user' => function($q) {
                     $q->select('id', 'name', 'email', 'phone', 'photo');
                 },
@@ -1357,14 +1359,14 @@ class HomeController extends Controller
             ->where('order_number', '!=', '')
             ->where('id', $id)
             ->first();
-        
+
             if (!$order) {
                 return response()->json([
                     'status' => false,
                     'message' => 'Order not found',
                 ], 404);
             }
-        
+
             $payment = $order->payments->first();
             $orderData = [
                 'id' => $order->id,
@@ -1382,14 +1384,14 @@ class HomeController extends Controller
                     'return_amount' => $payment->shopper_amount,
                     'delivery_charges' => $order->delivery_charges ?? null,
                     'tax' => $order->tax ?? null,
-                    
+
                 ] : null,
                 'user' => $order->user ? [
                     'id' => $order->user->id,
                     'name' => $order->user->name,
                     'email' => $order->user->email,
                     'phone' => $order->user->phone,
-                    'photo' => $order->user->photo 
+                    'photo' => $order->user->photo
                         ? asset($order->user->photo)
                         : asset('uploads/profiles/no_image.jpeg')
                 ] : null,
@@ -1403,7 +1405,7 @@ class HomeController extends Controller
                     ];
                 })
             ];
-        
+
             return response()->json([
                 'status' => true,
                 'message' => 'Transaction details fetched successfully',
@@ -1422,7 +1424,7 @@ class HomeController extends Controller
     public function updateUserPhoto(Request $request)
     {
         $user = auth()->user();
-        
+
         $data=$request->validate([
             'photo' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:20480',
         ]);
@@ -1432,16 +1434,16 @@ class HomeController extends Controller
             if ($user->photo && file_exists(public_path($user->photo))) {
                 unlink(public_path($user->photo));
             }
-            
+
             $image = $request->file('photo');
             $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
             $destinationPath = public_path('uploads/profiles');
-            
+
             // Create directory if it doesn't exist
             if (!File::exists($destinationPath)) {
                 File::makeDirectory($destinationPath, 0755, true);
             }
-            
+
             $image->move($destinationPath, $imageName);
             $user->photo = 'uploads/profiles/' . $imageName;
         }
