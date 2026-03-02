@@ -275,7 +275,7 @@ class FetchKrogerProductsJob implements ShouldQueue
         }
 
         if (!empty($productData)) {
-            Product::create($productData);
+            Product::insert($productData);
         }
     }
 

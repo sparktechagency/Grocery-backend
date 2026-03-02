@@ -19,8 +19,8 @@ class Kernel extends ConsoleKernel
         // Run the main Kroger job every day at 12:01 PM
         // This will break into smaller, manageable jobs
         $schedule->job(new FetchKrogerProductsJob(null, null, 1, 50, true))
-            ->monthly();
-//            ->everyMinute();
+//            ->monthly();
+            ->everySixHours($minutes = 0);
 //        $schedule->job(new ShowDataLogJob())->everyMinute()->withoutOverlapping();
     }
 
