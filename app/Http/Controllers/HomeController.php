@@ -1063,7 +1063,7 @@ class HomeController extends Controller
 
         return response()->json([
             'status' => true,
-            'message' => 'Data retreived successfully',
+            'message' => 'Data retrieved successfully',
             'data' => [
                 'total_earnings' => $totalEarnings,
                 'total_user' => $totalUser,
