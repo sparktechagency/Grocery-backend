@@ -1027,50 +1027,57 @@ class HomeController extends Controller
 
     public function dashboard(Request $request)
     {
-        $validatedData = $request->validate([
-            'filter' => 'sometimes|string|in:yearly,monthly,weekly,daily',
-        ]);
+        try {
+            $validatedData = $request->validate([
+                'filter' => 'sometimes|string|in:yearly,monthly,weekly,daily',
+            ]);
 
-        $filter = $request->input('filter', 'weekly');
+            $filter = $request->input('filter', 'weekly');
 
-        $totalEarnings = Payment::where('payment_status', 'completed')
-            ->selectRaw('SUM(amount - IFNULL(shopper_amount, 0)) as net_earnings')
-            ->value('net_earnings') ?? 0;
-        $totalUser = User::where('role', 'user')->count();
-        $allStores = Product::query()
-            ->whereNotNull('storeName')
-            ->where('storeName', '!=', '')
-            ->pluck('storeName')
-            ->unique()
-            ->values()
-            ->toArray();
+            $totalEarnings = Payment::where('payment_status', 'completed')
+                ->selectRaw('SUM(amount - IFNULL(shopper_amount, 0)) as net_earnings')
+                ->value('net_earnings') ?? 0;
+            $totalUser = User::where('role', 'user')->count();
+            $allStores = Product::query()
+                ->whereNotNull('storeName')
+                ->where('storeName', '!=', '')
+                ->pluck('storeName')
+                ->unique()
+                ->values()
+                ->toArray();
 
-        // Get chart data based on filter
-        $chartData = $this->getChartData($filter);
+            // Get chart data based on filter
+            $chartData = $this->getChartData($filter);
 
-        // Transform chart_data to array of { day, total }
-        $labels = $chartData['labels'] ?? [];
-        $values = $chartData['data'] ?? [];
-        $chartPoints = [];
-        foreach ($labels as $index => $label) {
-            $chartPoints[] = [
-                'day' => is_numeric($label) ? (int) $label : (string) $label,
-                'total' => isset($values[$index]) ? (float) $values[$index] : 0.0,
+            // Transform chart_data to array of { day, total }
+            $labels = $chartData['labels'] ?? [];
+            $values = $chartData['data'] ?? [];
+            $chartPoints = [];
+            foreach ($labels as $index => $label) {
+                $chartPoints[] = [
+                    'day' => is_numeric($label) ? (int)$label : (string)$label,
+                    'total' => isset($values[$index]) ? (float)$values[$index] : 0.0,
 //            'day'=>rand(1,7),
 //                'total'=>rand(1000,99999)
-            ];
-        }
+                ];
+            }
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Data retrieved successfully',
-            'data' => [
-                'total_earnings' => $totalEarnings,
-                'total_user' => $totalUser,
-                'all_stores' => count($allStores),
-                'chart_data' => $chartPoints,
-            ]
-        ]);
+            return response()->json([
+                'status' => true,
+                'message' => 'Data retrieved successfully',
+                'data' => [
+                    'total_earnings' => $totalEarnings,
+                    'total_user' => $totalUser,
+                    'all_stores' => count($allStores),
+                    'chart_data' => $chartPoints,
+                ]
+            ]);
+        }catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
     }
 
     private function getChartData($filter)
