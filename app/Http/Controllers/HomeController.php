@@ -1033,7 +1033,7 @@ class HomeController extends Controller
             ]);
 
             $filter = $request->input('filter', 'weekly');
-
+            dd($filter);
             $totalEarnings = Payment::where('payment_status', 'completed')
                 ->selectRaw('SUM(amount - IFNULL(shopper_amount, 0)) as net_earnings')
                 ->value('net_earnings') ?? 0;
